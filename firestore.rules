@@ -1,0 +1,25 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Configurações globais (filiais, usuários, plano, aparência)
+    // __app__ é leitura pública para mostrar nome do sistema antes do login
+    match /cfg/__app__ {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    match /cfg/{doc} {
+      allow read, write: if request.auth != null;
+    }
+
+    // Dados das filiais (fls/f1__cp, fls/f1__cr, etc.)
+    match /fls/{doc} {
+      allow read, write: if request.auth != null;
+    }
+
+    // Logs de atividade
+    match /logs/{doc} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
