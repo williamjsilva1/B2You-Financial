@@ -18,12 +18,12 @@
 // CONFIGURAÇÃO DO FIREBASE — substitua com seus dados
 // ═══════════════════════════════════════════════════════════════
 const FB_CONFIG = {
-  apiKey:            "SUA_API_KEY",
-  authDomain:        "SEU_PROJETO.firebaseapp.com",
-  projectId:         "SEU_PROJETO_ID",
-  storageBucket:     "SEU_PROJETO.appspot.com",
-  messagingSenderId: "SEU_SENDER_ID",
-  appId:             "SEU_APP_ID",
+  apiKey:            "AIzaSyAHm-78QNkFI93Gi9fa9yK7ne2atQINnK8",
+  authDomain:        "b2youfinancialcontrol.firebaseapp.com",
+  projectId:         "b2youfinancialcontrol",
+  storageBucket:     "b2youfinancialcontrol.firebasestorage.app",
+  messagingSenderId: "120136860530",
+  appId:             "1:120136860530:web:da6c8312cf7135d8a813eb",
   // measurementId:  "SEU_MEASUREMENT_ID", // opcional (Analytics)
 };
 
