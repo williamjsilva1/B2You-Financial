@@ -1,0 +1,68 @@
+{
+  "version": 2,
+  "name": "b2you-financial-control",
+  "builds": [
+    {
+      "src": "index.html",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "firebase.js",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "firestore.js",
+      "use": "@vercel/static"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/firebase.js",
+      "headers": {
+        "Cache-Control": "public, max-age=3600, must-revalidate",
+        "Content-Type": "application/javascript; charset=utf-8"
+      },
+      "dest": "/firebase.js"
+    },
+    {
+      "src": "/firestore.js",
+      "headers": {
+        "Cache-Control": "public, max-age=3600, must-revalidate",
+        "Content-Type": "application/javascript; charset=utf-8"
+      },
+      "dest": "/firestore.js"
+    },
+    {
+      "src": "/(.*)",
+      "headers": {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "X-Content-Type-Options": "nosniff",
+        "X-Frame-Options": "SAMEORIGIN",
+        "Referrer-Policy": "strict-origin-when-cross-origin",
+        "Permissions-Policy": "camera=self, microphone=()"
+      },
+      "dest": "/index.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/index.html",
+      "headers": [
+        { "key": "Cache-Control",          "value": "no-cache, no-store, must-revalidate" },
+        { "key": "Pragma",                 "value": "no-cache" },
+        { "key": "Expires",               "value": "0" },
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options",        "value": "SAMEORIGIN" },
+        { "key": "Referrer-Policy",        "value": "strict-origin-when-cross-origin" },
+        { "key": "Permissions-Policy",     "value": "camera=self, microphone=()" }
+      ]
+    },
+    {
+      "source": "/(firebase|firestore)\\.js",
+      "headers": [
+        { "key": "Cache-Control",  "value": "public, max-age=3600, must-revalidate" },
+        { "key": "Content-Type",   "value": "application/javascript; charset=utf-8" }
+      ]
+    }
+  ]
+}
