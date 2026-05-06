@@ -1,0 +1,43 @@
+rules_version = '2';
+
+// ══════════════════════════════════════════════════════════════
+// B2You Financial Control — Firestore Security Rules
+// Projeto: b2youfinancialcontrol
+//
+// Estrutura de documentos:
+//   /dados/g__fil        → filiais (global)
+//   /dados/g__usr        → usuários (global)
+//   /dados/g__pc         → plano de contas (global)
+//   /dados/g__app        → configurações do app (global)
+//   /dados/{fid}__{col}  → dados por filial (ex: dados/f1__cp)
+//   /logs/{logId}        → log de atividades
+// ══════════════════════════════════════════════════════════════
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Apenas usuários autenticados têm acesso
+    function isAuth() {
+      return request.auth != null && request.auth.uid != null;
+    }
+
+    // Todos os documentos em /dados/* — leitura e escrita para autenticados
+    match /dados/{document} {
+      allow read:  if isAuth();
+      allow write: if isAuth();
+    }
+
+    // Logs: criação e leitura liberadas; edição bloqueada; exclusão permitida (limpeza pelo admin)
+    match /logs/{logId} {
+      allow read:   if isAuth();
+      allow create: if isAuth();
+      allow update: if false;
+      allow delete: if isAuth();
+    }
+
+    // Bloqueia qualquer outro caminho não mapeado
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
