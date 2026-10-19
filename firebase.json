@@ -1,5 +1,0 @@
-{
-  "firestore": { "rules": "seguranca/firestore.rules" },
-  "storage": { "rules": "seguranca/storage.rules" },
-  "functions": [{ "source": "functions", "codebase": "default" }]
-}
