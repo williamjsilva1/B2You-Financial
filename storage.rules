@@ -1,0 +1,26 @@
+rules_version = '2';
+
+// B2You — regras do Storage (anexos de contas a pagar). Mesmo interruptor do Firestore: config/seguranca.
+// Atenção: o link de download gerado pelo app (getDownloadURL) carrega um token e abre para quem tiver o link,
+// independentemente destas regras. Elas protegem listagem, envio, troca e exclusão por quem não está liberado.
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function logado() { return request.auth != null; }
+    function estrito() {
+      return firestore.exists(/databases/(default)/documents/config/seguranca)
+        && firestore.get(/databases/(default)/documents/config/seguranca).data.get('estrito', false) == true;
+    }
+    function ativo() {
+      return firestore.exists(/databases/(default)/documents/acesso/$(request.auth.uid))
+        && firestore.get(/databases/(default)/documents/acesso/$(request.auth.uid)).data.get('ativo', false) == true;
+    }
+    function liberado() { return logado() && (!estrito() || ativo()); }
+
+    match /cp-anexos/{pasta}/{arquivo} {
+      allow read: if liberado();
+      allow create, update: if liberado() && request.resource.size < 10 * 1024 * 1024;
+      allow delete: if liberado();
+    }
+  }
+}

@@ -1,17 +1,86 @@
 rules_version = '2';
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// B2You Financial Control — regras do Firestore
+//
+// COMO FUNCIONA
+//  • Cada usuário tem um "cartão de acesso" em  acesso/{uid}  (status, perfil, filiais, módulos).
+//    Só a Cloud Function escreve nele (ninguém pelo navegador) — por isso bloquear/excluir tem efeito
+//    imediato NO SERVIDOR: no instante em que o cartão vira "ativo: false", toda leitura e escrita é recusada.
+//  • Interruptor de segurança:  config/seguranca  →  { estrito: true }
+//      - ausente ou false = MODO COMPATÍVEL: qualquer usuário logado faz tudo (como antes das regras). Serve
+//        para publicar as regras sem risco e conferir os cartões antes de ativar.
+//      - true = MODO ESTRITO: só usuário ATIVO e conforme perfil/filiais/módulos. Para voltar atrás, apague
+//        o documento ou ponha estrito: false (efeito imediato).
+// ═══════════════════════════════════════════════════════════════════════════════
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // dados/g__app — leitura pública (nome do sistema na tela de login)
-    match /dados/g__app {
-      allow read: if true;
-      allow write: if request.auth != null;
+    // ───── funções auxiliares ─────
+    function logado() { return request.auth != null; }
+    function cartao() { return get(/databases/$(database)/documents/acesso/$(request.auth.uid)).data; }
+    function temCartao() { return exists(/databases/$(database)/documents/acesso/$(request.auth.uid)); }
+    function estrito() {
+      return exists(/databases/$(database)/documents/config/seguranca)
+        && get(/databases/$(database)/documents/config/seguranca).data.get('estrito', false) == true;
+    }
+    function ativo() { return logado() && temCartao() && cartao().get('ativo', false) == true; }
+    // liberado: pode usar o sistema (no modo compatível basta estar logado)
+    function liberado() { return logado() && (!estrito() || ativo()); }
+    // adm: administrador (no modo compatível, qualquer logado — comportamento antigo)
+    function adm() { return logado() && (!estrito() || (ativo() && cartao().get('perfil', 'usuario') == 'admin')); }
+    // lista de módulos vazia = acesso a todos (mesma regra do app)
+    function temModulo(m) {
+      return adm() || !estrito() || (ativo() && (cartao().get('modulos', []).size() == 0 || m in cartao().get('modulos', [])));
+    }
+    // lista de filiais vazia = todas as filiais (mesma regra do app)
+    function filialOk(fid) {
+      return adm() || !estrito() || (ativo() && (cartao().get('filiais', []).size() == 0 || fid in cartao().get('filiais', [])));
+    }
+    function ehGlobal(docId) { return docId.matches('^g__.*'); }
+
+    // ───── cartão de acesso: leitura do próprio (sempre, mesmo bloqueado) ou por administrador; ninguém escreve ─────
+    match /acesso/{uid} {
+      allow read: if logado() && (request.auth.uid == uid || adm());
+      allow write: if false;
     }
 
-    // Todos os dados em /dados/{doc} — requer autenticação
-    // Cobre globais (dados/g__*) e filiais (dados/f1__*, etc.)
-    match /dados/{doc} {
-      allow read, write: if request.auth != null;
+    // ───── pedido de acesso: o próprio usuário avisa a função que entrou (só 2 campos; não define status) ─────
+    match /solicitacoes/{uid} {
+      allow read: if logado() && (request.auth.uid == uid || adm());
+      allow create, update: if logado() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['uid', 'ultimoAcesso']);
+      allow delete: if adm();
     }
+
+    // ───── configuração de segurança: só pelo console do Firebase ─────
+    match /config/{docId} {
+      allow read: if logado();
+      allow write: if false;
+    }
+
+    // ───── histórico (logs): todos gravam; só administrador lê, corrige ou apaga ─────
+    match /logs/{logId} {
+      allow create: if liberado();
+      allow read, update, delete: if adm();
+    }
+
+    // ───── dados do sistema ─────
+    match /dados/{docId} {
+      // o nome/cor do sistema aparece na tela de login, antes de entrar
+      allow get: if docId == 'g__app';
+      allow read: if liberado() && (ehGlobal(docId) || filialOk(docId.split('__')[0]));
+      allow write: if liberado() && (
+           docId == 'g__presence'
+        || (docId == 'g__usr' && adm())
+        || (docId == 'g__fil' && temModulo('configuracoes'))
+        || (docId == 'g__app' && temModulo('configuracoes'))
+        || (docId == 'g__pc'  && temModulo('configuracoes'))
+        || (docId == 'g__cat' && temModulo('configuracoes'))
+        || (!ehGlobal(docId) && filialOk(docId.split('__')[0]))
+      );
+    }
+
+    // tudo o mais (inclusive caminhos antigos) fica fechado
   }
 }
